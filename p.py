@@ -1,7 +1,13 @@
 import json
 
 
-oc = []
+oc = {}
+
+def add(id, nome, prioridade):
+    oc["id"] = id,
+    oc["nome"] = nome
+    oc["prioridade"] = prioridade
+
 
 
 
