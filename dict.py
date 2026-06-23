@@ -3,4 +3,6 @@ dict = {}
 dict["nome"] = "vitor"
 dict["idade"] = 23
 
-print(dict)
+prefixo = dict["nome"][:3]
+
+print(prefixo)
