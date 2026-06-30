@@ -1,43 +1,154 @@
-import json
+import heapq
+
+import uuid
+
+from collections import deque
+
+class No:
+    def __init__(self, ocorrencia):
+        self.ocorrencia = ocorrencia
+        self.esquerda = None
+        self.direita = None
+
+
+
+class ArvoreID:
+
+    def __init__(self):
+        self.raiz = None
+
+    def inserir(self, ocorrencia):
+
+        novo = No(ocorrencia)
+
+        if self.raiz is None:
+            self.raiz = novo
+            return
+
+        atual = self.raiz
+
+        while True:
+
+            if ocorrencia['id'] < atual.ocorrencia['id']:
+
+                if atual.esquerda is None:
+                    atual.esquerda = novo
+                    return
+
+                atual = atual.esquerda
+
+            else:
+
+                if atual.direita is None:
+                    atual.direita = novo
+                    return
+
+                atual = atual.direita
+    def buscar(self, id_):
+
+        atual = self.raiz
+
+        while atual:
+
+            if id_ == atual.ocorrencia['id']:
+                return atual.ocorrencia
+
+            elif id_ < atual.ocorrencia['id']:
+                atual = atual.esquerda
+
+            else:
+                atual = atual.direita
+
+        return None
+
+heap_prioridades = []
+
+fila_ocorrencias = deque()
 
 ocorrencia_lista = []
+
+ocorrencia_lista_abertas = []
+
+ocorrencia_lista_fechadas = []
+
+arvore_ids = ArvoreID()
+
 historico_acoes = []
 
-def gerar_id(nome):
-    soma = 0
+indice_nome = {}
 
-    for letra in nome:
-        soma += ord(letra)
+indice_tipo = {}
 
-    codigo = soma % 10000
-    prefixo = nome[:3].upper()
-
-    return prefixo + "-" + str(codigo)
+ordem_chegada_counter = 0
 
 
-def cadastra_ocorrencia(vetor, novaInsercao):
-    vetor.append(novaInsercao)
+
+def gerar_id():
+  return str(uuid.uuid4())[:8]
+
+
+def cadastra_ocorrencia(ocorrencias_list, ocorrencias_list_aberta, novaInsercao):
+    ocorrencias_list.append(novaInsercao)
+    ocorrencias_list_aberta.append(novaInsercao)
+
+    arvore_ids.inserir(novaInsercao)
 
     historico_acoes.append({
         'acoes': 'cadastrar',
         'ocorrencia': novaInsercao.copy()
     })
 
-
 def listar_ocorrencias():
-    print("\n===== LISTA DE OCORRÊNCIAS =====")
+  print("\n===== LISTA DE TODAS AS OCORRENCIAS ====")
 
-    if not ocorrencia_lista:
-        print("Nenhuma ocorrência cadastrada.")
+  if not ocorrencia_lista:
+    print("Nenhuma ocorrencia cadastrada.")
+    return
+
+  for o in ocorrencia_lista:
+    print(f"ID: {o['id']} |"
+          f"Nome: {o['nome']} |"
+          f"Tipo: {o['tipo']} |"
+          f"Descricao: {o['descricao']} |"
+          f"Prioridade: {o['prioridade']} |"
+          f"Ordem chegada: {o['ordem_chegada']} |"
+          f"Status: {o['status']}")
+
+def listar_ocorrencias_abertas():
+    print("\n===== LISTA DE OCORRÊNCIAS ABERTAS =====")
+
+    if not ocorrencia_lista_abertas:
+        print("Nenhuma ocorrência aberta cadastrada.")
         return
 
-    for o in ocorrencia_lista:
+    for o in ocorrencia_lista_abertas:
         print(
             f"ID: {o['id']} | "
             f"Nome: {o['nome']} | "
-            f"Prioridade: {o['prioridade']}"
+            f"Tipo: {o['tipo']} |"
+            f"Descricao: {o['descricao']} |"
+            f"Prioridade: {o['prioridade']} |"
+            f"Ordem chegada: {o['ordem_chegada']} |"
+            f"Status: {o['status']}"
         )
 
+def listar_ocorrencias_fechadas():
+    print("\n===== LISTA DE OCORRÊNCIAS FECHADAS =====")
+
+    if not ocorrencia_lista_fechadas:
+        print("Nenhuma ocorrência fechada.")
+        return
+
+    for o in ocorrencia_lista_fechadas:
+        print(
+            f"ID: {o['id']} | "
+            f"Nome: {o['nome']} | "
+            f"Tipo: {o['tipo']} |"
+            f"Descricao: {o['descricao']} |"
+            f"Prioridade: {o['prioridade']} |"
+            f"Ordem chegada: {o['ordem_chegada']} |"
+            f"Status: {o['status']}"
+        )
 
 def encontrar_id(id_):
     for i, o in enumerate(ocorrencia_lista):
@@ -46,65 +157,103 @@ def encontrar_id(id_):
 
     return None
 
-
 def atender_proxima_ocorrencia():
     print("ATENDER PRÓXIMA OCORRÊNCIA (FIFO)")
 
-    if not ocorrencia_lista:
+    if not ocorrencia_lista_abertas:
         print("Não há ocorrência para atender.")
         return
 
     at = input("Atender fila? (s ou n): ").lower()
 
     if at == "s":
-        oc = ocorrencia_lista.pop(0)
+      fila_ocorrencias.append(ocorrencia_lista)
+      oc = fila_ocorrencias.popleft()
+      ocorrencia_lista_fechadas.append(oc)
+      ocorrencia_lista_abertas.remove(oc)
 
-        historico_acoes.append({
-            'acoes': 'atender_fila',
-            'ocorrencia': oc,
-            'index': 0
-        })
+      historico_acoes.append({
+          'acoes': 'atender_fila',
+          'ocorrencia': oc.copy(),
+          'index': 0
+      })
 
-        print("Ocorrência atendida:")
-        print(
-            f"ID: {oc['id']} | "
-            f"{oc['nome']} | "
-            f"{oc['prioridade']}"
-        )
+      print("ANTES --|.")
 
+      print(
+          f"ID: {oc['id']} | "
+          f"{oc['nome']} | "
+          f"{oc['tipo']} |"
+          f"{oc['prioridade']} |"
+          f"{oc['ordem_chegada']} |"
+          f"{oc['status']}"
+      )
+
+      oc["status"] = "Fechada"
+
+      print("DEPOIS --|.")
+      print("Ocorrência atendida:")
+
+      print(
+          f"ID: {oc['id']} | "
+          f"{oc['nome']} | "
+          f"{oc['tipo']} |"
+          f"{oc['prioridade']} |"
+          f"{oc['ordem_chegada']} |"
+          f"{oc['status']}"
+      )
 
 def atender_ocorrencia_de_maior_prioridade():
 
-    if not ocorrencia_lista:
+    if not heap_prioridades:
         print("Nenhuma ocorrência cadastrada.")
         return
 
-    maior_prioridade = max(
-        int(item["prioridade"])
-        for item in ocorrencia_lista
-    )
+    _, _, oc_from_heap = heapq.heappop(heap_prioridades)
 
-    for i, item in enumerate(ocorrencia_lista):
+    original_index = -1
+    for i, item in enumerate(ocorrencia_lista_abertas):
+        if item["id"] == oc_from_heap["id"]:
+            original_index = i
+            break
 
-        if int(item["prioridade"]) == maior_prioridade:
+    if original_index != -1:
+        oc = ocorrencia_lista_abertas.pop(original_index)
+        ocorrencia_lista_fechadas.append(oc)
 
-            oc = ocorrencia_lista.pop(i)
+        print("ANTES --|.")
 
-            historico_acoes.append({
-                'acoes': 'atender_prioridade',
-                'ocorrencia': oc,
-                'index': i
-            })
+        print(
+            f"ID: {oc['id']} | "
+            f"Nome: {oc['nome']} | "
+            f"Tipo: {oc['tipo']} | "
+            f"Prioridade: {oc['prioridade']} |"
+            f"Ordem chegada: {oc['ordem_chegada']} |"
+            f"Status: {oc['status']}"
+        )
 
-            print("Ocorrência atendida:")
-            print(
-                f"ID: {oc['id']} | "
-                f"{oc['nome']} | "
-                f"{oc['prioridade']}"
-            )
+        oc["status"] = "Fechada"
 
-            return
+        historico_acoes.append({
+            'acoes': 'atender_prioridade',
+            'ocorrencia': oc.copy(),
+            'index': original_index
+        })
 
+        print("DEPOIS --|.")
+
+        print("Ocorrência atendida:")
+
+        print(
+            f"ID: {oc['id']} | "
+            f"Nome: {oc['nome']} | "
+            f"Tipo: {oc['tipo']} | "
+            f"Prioridade: {oc['prioridade']} |"
+            f"Ordem chegada: {oc['ordem_chegada']} |"
+            f"Status: {oc['status']}"
+        )
+    else:
+        print(f"Ocorrência com ID {oc_from_heap['id']} não encontrada na lista de abertas.")
 
 def buscar_ocorrencia_por_id():
 
@@ -112,69 +261,90 @@ def buscar_ocorrencia_por_id():
 
     search = input("Digite o ID: ")
 
-    idx = encontrar_id(search)
+    resultado = arvore_ids.buscar(search)
 
     historico_acoes.append({
         'acoes': 'buscar_id',
         'termo': search
     })
 
-    if idx is None:
+    if resultado is None:
         print("Ocorrência não encontrada.")
+
     else:
-        o = ocorrencia_lista[idx]
 
         print("Ocorrência encontrada:")
+
         print(
-            f"ID: {o['id']} | "
-            f"Nome: {o['nome']} | "
-            f"Prioridade: {o['prioridade']}"
+            f"ID: {resultado['id']} | "
+            f"Nome: {resultado['nome']} | "
+            f"Tipo: {resultado['tipo']} | "
+            f"Descrição: {resultado['descricao']} | "
+            f"Prioridade: {resultado['prioridade']} | "
+            f"Status: {resultado['status']}"
         )
 
+def buscar_por_nome():
+  nome = input("Nome: ").lower()
+  resultado = indice_nome.get(nome, [])
 
-def buscar_ocorrencia_por_nome():
+  if not resultado:
+    print("Nenhuma ocorrencia encontrada.")
+    return
 
-    nome = input(
-        "Insira o nome para encontrar a ocorrência: "
+  for o in resultado:
+    print(
+        f"{o['id']} |"
+        f"{o['nome']} |"
+        f"{o['tipo']} |"
     )
 
-    historico_acoes.append({
-        'acoes': 'buscar_nome',
-        'termo': nome
-    })
+def buscar_por_tipo():
+  tipo = input("Tipo: ").lower()
+  resultado = indice_tipo.get(tipo, [])
 
-    resultado = [
-        o for o in ocorrencia_lista
-        if nome.lower() in o["nome"].lower()
-    ]
+  if not resultado:
+    print("Nenhuma ocorrencia encontrada.")
+    return
+  
+  for o in resultado:
+    print(
+        f"{o['id']} |"
+        f"{o['nome']} |"
+        f"{o['tipo']}"
+    )
 
-    if not resultado:
-        print("Nenhuma ocorrência encontrada.")
-        return
-
-    for o in resultado:
-        print(
-            f"ID: {o['id']} | "
-            f"Nome: {o['nome']} | "
-            f"Prioridade: {o['prioridade']}"
-        )
-
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        for j in range(0, n - i - 1):
+            if int(arr[j]['prioridade']) < int(arr[j + 1]['prioridade']):
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
 
 def ordenar_ocorrencia():
+    prev_order = [o['id'] for o in ocorrencia_lista_abertas]
 
-    prev_order = [o['id'] for o in ocorrencia_lista]
-
-    ocorrencia_lista.sort(
-        key=lambda x: int(x["prioridade"]),
-        reverse=True
-    )
+    bubble_sort(ocorrencia_lista_abertas)
 
     historico_acoes.append({
         'acoes': 'ordenar',
         'prev_order': prev_order
     })
-
     print("Ocorrências ordenadas por prioridade.")
+    print(ocorrencia_lista)
+
+def indexar_ocorrencia(ocorrencia):
+  nome = ocorrencia["nome"].lower()
+
+  if nome not in indice_nome:
+      indice_nome[nome] = []
+  indice_nome[nome].append(ocorrencia)
+
+  tipo = ocorrencia["tipo"].lower()
+
+  if tipo not in indice_tipo:
+      indice_tipo[tipo] = []
+  indice_tipo[tipo].append(ocorrencia)
 
 
 def historico():
@@ -187,7 +357,7 @@ def historico():
 
     for i, h in enumerate(historico_acoes, start=1):
 
-        ac = h.get('acoes')
+        ac = h["acoes"]
 
         if ac == "cadastrar":
             print(
@@ -212,12 +382,11 @@ def historico():
                 f"{h['termo']}"
             )
 
-        elif ac == "buscar_nome":
+        elif ac == "buscar_nome_tipo":
             print(
-                f"{i}. Busca por nome - "
+                f"{i}. Busca por nome ou tipo - "
                 f"{h['termo']}"
             )
-
 
 def desfazer():
 
@@ -229,7 +398,7 @@ def desfazer():
 
     h = historico_acoes.pop()
 
-    ac = h.get('acoes')
+    ac = h["acoes"]
 
     if ac == "cadastrar":
 
@@ -238,7 +407,7 @@ def desfazer():
         idx = encontrar_id(id_remover)
 
         if idx is not None:
-            ocorrencia_lista.pop(idx)
+            ocorrencia_lista_abertas.pop(idx)
 
         print(
             f"Cadastro da ocorrência "
@@ -250,15 +419,24 @@ def desfazer():
         "atender_prioridade"
     ):
 
-        oc = h["ocorrencia"]
-        idx = h["index"]
+        oc_original = h["ocorrencia"]
 
-        ocorrencia_lista.insert(idx, oc)
+        for i, oc_fechada in enumerate(ocorrencia_lista_fechadas):
+            if oc_fechada['id'] == oc_original['id']:
+                removed_oc = ocorrencia_lista_fechadas.pop(i)
+                removed_oc['status'] = 'Aberto'
 
-        print(
-            f"Atendimento da ocorrência "
-            f"{oc['id']} desfeito."
-        )
+                try:
+                    ocorrencia_lista_abertas.insert(h['index'], removed_oc)
+                except IndexError:
+                    ocorrencia_lista_abertas.append(removed_oc)
+                print(
+                    f"Atendimento da ocorrência "
+                    f"{oc_original['id']} desfeito."
+                )
+                return
+        print(f"Não foi possível desfazer atendimento da ocorrência {oc_original['id']} (não encontrada na lista de fechadas).")
+
 
     elif ac == "ordenar":
 
@@ -266,7 +444,7 @@ def desfazer():
 
         mapa = {
             o['id']: o
-            for o in ocorrencia_lista
+            for o in ocorrencia_lista_abertas
         }
 
         restaurada = []
@@ -275,8 +453,8 @@ def desfazer():
             if id_ in mapa:
                 restaurada.append(mapa[id_])
 
-        ocorrencia_lista.clear()
-        ocorrencia_lista.extend(restaurada)
+        ocorrencia_lista_abertas.clear()
+        ocorrencia_lista_abertas.extend(restaurada)
 
         print("Ordenação desfeita.")
 
@@ -296,22 +474,26 @@ def desfazer():
 
 
 def menu():
+    global ordem_chegada_counter
 
     while True:
 
         print("\nMENU")
-        print("1. Cadastrar ocorrência")
-        print("2. Listar todas as ocorrências")
-        print("3. Atender próxima ocorrência pela fila")
-        print("4. Atender ocorrência de maior prioridade")
-        print("5. Buscar ocorrência por ID")
-        print("6. Buscar ocorrências por nome")
-        print("7. Ordenar ocorrências")
-        print("8. Ver histórico de ações")
-        print("9. Desfazer última ação")
+        print("1. Cadastrar ocorrencia")
+        print("2. Listar ocorrencias")
+        print("2.1. Listar ocorrencias abertas")
+        print("2.2. Listar ocorrencias fechadas")
+        print("3. Atender próxima ocorrencia pela fila")
+        print("4. Atender ocorrencia de maior prioridade")
+        print("5. Buscar ocorrencia por ID")
+        print("6.1. Buscar ocorrencias por nome")
+        print("6.2. Buscar ocorrencias por tipo")
+        print("7. Ordenar ocorrencias")
+        print("8. Ver historico de acoes")
+        print("9. Desfazer ultima acao")
         print("0. Sair")
 
-        op = input("Selecione a opção: ")
+        op = input("Selecione a opcao: ")
 
         if op == "1":
 
@@ -320,29 +502,65 @@ def menu():
             print("*" * 20)
 
             nome = input(
-                "Digite o nome da ocorrência: "
+                "Nome: "
+            )
+
+            tipo = input(
+                "Tipo: "
+            )
+
+            descricao = input(
+                "Descricao: "
             )
 
             prioridade = input(
                 "Prioridade: "
             )
 
+            ordem_chegada_counter += 1
+
+            status = "Aberto"
+
             ocorrencia = {
-                'id': gerar_id(nome),
+                'id': gerar_id(),
                 'nome': nome,
-                'prioridade': prioridade
+                'tipo': tipo,
+                'descricao': descricao,
+                'prioridade': prioridade,
+                'ordem_chegada': ordem_chegada_counter,
+                'status': status
             }
+
 
             cadastra_ocorrencia(
                 ocorrencia_lista,
+                ocorrencia_lista_abertas,
                 ocorrencia
+            )
+
+            indexar_ocorrencia(ocorrencia)
+
+            heapq.heappush(
+                heap_prioridades,
+                (
+                    -int(prioridade),
+                    ordem_chegada_counter,
+                    ocorrencia
+                )
             )
 
             print("Ocorrência cadastrada!")
 
         elif op == "2":
+          listar_ocorrencias()
 
-            listar_ocorrencias()
+        elif op == "2.1":
+
+            listar_ocorrencias_abertas()
+
+        elif op == "2.2":
+
+            listar_ocorrencias_fechadas()
 
         elif op == "3":
 
@@ -356,9 +574,12 @@ def menu():
 
             buscar_ocorrencia_por_id()
 
-        elif op == "6":
+        elif op == "6.1":
 
-            buscar_ocorrencia_por_nome()
+            buscar_por_nome()
+
+        elif op == "6.2":
+            buscar_por_tipo()
 
         elif op == "7":
 
@@ -383,4 +604,3 @@ def menu():
 
 
 menu()
-
